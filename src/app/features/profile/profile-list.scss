@@ -1,0 +1,81 @@
+.profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+
+  &__title {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &__items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-3);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-background);
+    }
+
+    /* The active entry carries three cues besides colour: a check mark, a bold name
+       and the word "aktiv" (Ü-3). */
+    &--active {
+      border-color: var(--color-accent);
+      background: var(--color-background);
+      font-weight: 600;
+    }
+  }
+
+  /* Fixed width so that the names line up whether or not the mark is shown. */
+  &__marker {
+    flex: 0 0 1rem;
+    color: var(--color-accent);
+  }
+
+  &__name {
+    flex: 1 1 auto;
+    overflow-wrap: anywhere;
+  }
+
+  &__year {
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+    font-weight: 400;
+  }
+
+  &__badge {
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}

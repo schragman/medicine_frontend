@@ -32,8 +32,8 @@ export class ProfileStore {
   readonly storageError = this.storageErrorSignal.asReadonly();
 
   /**
-   * Loads the stored profiles. Until profile switching exists (US-02), the most
-   * recently created profile becomes the active one.
+   * Loads the stored profiles. The most recently created one starts out active; from
+   * there the user switches profiles through {@link activate} (US-02).
    */
   async load(): Promise<void> {
     try {
@@ -91,8 +91,11 @@ export class ProfileStore {
     return profile;
   }
 
+  /** Makes this profile the active one. An unknown id is ignored (US-02 AC3). */
   activate(id: string): void {
-    this.activeIdSignal.set(id);
+    if (this.profilesSignal().some((profile) => profile.id === id)) {
+      this.activeIdSignal.set(id);
+    }
   }
 
   private reportStorageError(error: unknown): void {

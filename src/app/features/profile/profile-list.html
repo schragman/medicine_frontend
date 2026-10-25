@@ -1,0 +1,31 @@
+<nav class="profile-list" aria-labelledby="profile-list-title">
+  <h2 id="profile-list-title" class="profile-list__title">Meine Silhouetten</h2>
+
+  <ul class="profile-list__items">
+    @for (profile of store.profiles(); track profile.id) {
+      <li>
+        <button
+          type="button"
+          class="profile-list__item"
+          [class.profile-list__item--active]="profile.id === activeId()"
+          [attr.aria-current]="profile.id === activeId() ? 'true' : null"
+          data-testid="profile-list-item"
+          (click)="select(profile.id)"
+        >
+          <span class="profile-list__marker" aria-hidden="true">
+            @if (profile.id === activeId()) {
+              ✓
+            }
+          </span>
+          <span class="profile-list__name">{{ profile.name }}</span>
+          @if (profile.birthYear !== null) {
+            <span class="profile-list__year">{{ profile.birthYear }}</span>
+          }
+          @if (profile.id === activeId()) {
+            <span class="profile-list__badge">aktiv</span>
+          }
+        </button>
+      </li>
+    }
+  </ul>
+</nav>

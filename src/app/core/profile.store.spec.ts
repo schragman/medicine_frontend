@@ -72,6 +72,23 @@ describe('ProfileStore', () => {
     expect(store.activeProfile()?.name).toBe('Bea');
   });
 
+  it('switches the active profile (US-02 AC3)', async () => {
+    const anna = await store.create(draft('Anna'));
+    await store.create(draft('Bea'));
+
+    store.activate(anna.id);
+
+    expect(store.activeProfile()).toEqual(anna);
+  });
+
+  it('keeps the active profile when the id is unknown', async () => {
+    const anna = await store.create(draft('Anna'));
+
+    store.activate('does-not-exist');
+
+    expect(store.activeProfile()).toEqual(anna);
+  });
+
   it('surfaces a storage failure instead of failing silently', async () => {
     vi.spyOn(repository, 'save').mockRejectedValueOnce(new Error('Speicher voll'));
 
