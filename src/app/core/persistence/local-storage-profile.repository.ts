@@ -1,0 +1,125 @@
+import { Injectable } from '@angular/core';
+
+import { BODY_FORMS, DEFAULT_BODY_FORM, Profile } from '../model/profile';
+import { ProfileRepository, StorageUnavailableError } from './profile.repository';
+
+const STORAGE_KEY = 'medicin.profiles';
+
+/**
+ * Version of the stored payload. Raise it when the shape of {@link StoredProfiles}
+ * changes and add a migration in {@link migrate}.
+ */
+const SCHEMA_VERSION = 1;
+
+interface StoredProfiles {
+  schemaVersion: number;
+  profiles: Profile[];
+}
+
+/**
+ * Browser-local implementation of {@link ProfileRepository} — the only place in the
+ * application that touches `localStorage` (US-11, AC3).
+ */
+@Injectable()
+export class LocalStorageProfileRepository extends ProfileRepository {
+  async findAll(): Promise<Profile[]> {
+    return this.read().profiles;
+  }
+
+  async save(profile: Profile): Promise<void> {
+    const profiles = this.read().profiles;
+    const index = profiles.findIndex((candidate) => candidate.id === profile.id);
+    if (index >= 0) {
+      profiles[index] = profile;
+    } else {
+      profiles.push(profile);
+    }
+    this.write(profiles);
+  }
+
+  async delete(id: string): Promise<void> {
+    const remaining = this.read().profiles.filter((profile) => profile.id !== id);
+    this.write(remaining);
+  }
+
+  private read(): StoredProfiles {
+    let raw: string | null;
+    try {
+      raw = localStorage.getItem(STORAGE_KEY);
+    } catch (cause) {
+      // Private browsing or a blocking cookie policy can make localStorage unreadable.
+      throw new StorageUnavailableError(
+        'Der lokale Speicher des Browsers ist nicht verfügbar.',
+        { cause },
+      );
+    }
+
+    if (raw === null) {
+      return { schemaVersion: SCHEMA_VERSION, profiles: [] };
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (cause) {
+      throw new StorageUnavailableError(
+        'Die gespeicherten Daten konnten nicht gelesen werden.',
+        { cause },
+      );
+    }
+
+    return migrate(parsed);
+  }
+
+  private write(profiles: Profile[]): void {
+    const payload: StoredProfiles = { schemaVersion: SCHEMA_VERSION, profiles };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (cause) {
+      // Most likely a full quota — the caller has to tell the user (US-11, AC5).
+      throw new StorageUnavailableError(
+        'Die Daten konnten nicht gespeichert werden. Möglicherweise ist der Speicher des Browsers voll.',
+        { cause },
+      );
+    }
+  }
+}
+
+/**
+ * Brings a stored payload of any known version into the current shape. Unknown or
+ * malformed content is rejected rather than silently dropped, so that a bug cannot
+ * quietly erase a user's data.
+ */
+function migrate(parsed: unknown): StoredProfiles {
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new StorageUnavailableError('Die gespeicherten Daten haben ein unbekanntes Format.');
+  }
+
+  const { schemaVersion, profiles } = parsed as Partial<StoredProfiles>;
+
+  if (schemaVersion !== SCHEMA_VERSION) {
+    throw new StorageUnavailableError(
+      `Die gespeicherten Daten stammen aus Version ${schemaVersion ?? 'unbekannt'} und können nicht gelesen werden.`,
+    );
+  }
+
+  if (!Array.isArray(profiles) || !profiles.every(isProfile)) {
+    throw new StorageUnavailableError('Die gespeicherten Daten sind unvollständig.');
+  }
+
+  return { schemaVersion, profiles };
+}
+
+function isProfile(candidate: unknown): candidate is Profile {
+  if (typeof candidate !== 'object' || candidate === null) {
+    return false;
+  }
+  const profile = candidate as Partial<Profile>;
+  return (
+    typeof profile.id === 'string' &&
+    typeof profile.name === 'string' &&
+    typeof profile.createdAt === 'string' &&
+    (profile.birthYear === null || typeof profile.birthYear === 'number') &&
+    BODY_FORMS.includes(profile.bodyForm ?? DEFAULT_BODY_FORM)
+  );
+}

@@ -1,0 +1,92 @@
+/* Global design tokens and base styles. */
+
+:root {
+  --color-background: #f1f5f9;
+  --color-surface: #ffffff;
+  --color-text: #0f172a;
+  --color-text-muted: #475569;
+  --color-border: #e2e8f0;
+  --color-border-strong: #94a3b8;
+
+  --color-accent: #1d4ed8;
+  --color-accent-strong: #1e40af;
+  --color-accent-contrast: #ffffff;
+
+  --color-danger: #b91c1c;
+  --color-danger-text: #991b1b;
+  --color-danger-surface: #fef2f2;
+
+  /* The body outline is translucent so that organs and bones can show through it. */
+  --color-silhouette-fill: rgb(203 213 225 / 45%);
+  --color-silhouette-stroke: #64748b;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  line-height: 1.5;
+}
+
+/* Visible focus for every interactive element (WCAG 2.2 AA). */
+:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.button {
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-background);
+  }
+
+  &--primary {
+    border-color: transparent;
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+
+    &:hover {
+      background: var(--color-accent-strong);
+    }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}

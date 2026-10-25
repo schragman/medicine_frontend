@@ -1,0 +1,39 @@
+<div class="overview">
+  <div class="overview__bar">
+    <h1 class="overview__title">Silhouetten</h1>
+    <button
+      type="button"
+      class="add-button"
+      data-testid="add-profile"
+      (click)="openDialog()"
+    >
+      <span class="add-button__icon" aria-hidden="true">+</span>
+      <span>Neue Silhouette</span>
+    </button>
+  </div>
+
+  @if (store.storageError(); as error) {
+    <p class="notice notice--error" role="alert">{{ error }}</p>
+  }
+
+  @if (store.activeProfile(); as profile) {
+    <med-silhouette-placeholder [profile]="profile" />
+  } @else {
+    <section class="empty" data-testid="empty-state">
+      <h2 class="empty__title">Noch keine Silhouette vorhanden</h2>
+      <p class="empty__text">
+        Legen Sie eine Silhouette an, um gesundheitliche Probleme für eine Person zu
+        dokumentieren. Jede Person bekommt eine eigene Silhouette mit einem eindeutigen Namen.
+      </p>
+      <button type="button" class="button button--primary" (click)="openDialog()">
+        Erste Silhouette anlegen
+      </button>
+    </section>
+  }
+
+  <med-profile-form-dialog
+    [open]="dialogOpen()"
+    (created)="closeDialog()"
+    (cancelled)="closeDialog()"
+  />
+</div>
