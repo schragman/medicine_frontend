@@ -78,6 +78,44 @@ describe('ProfileStore', () => {
     expect(store.profiles().map((profile) => profile.name)).toEqual(['Bea']);
   });
 
+  it('lists a profile once even if a load picks it up while it is being saved', async () => {
+    const save = repository.save.bind(repository);
+    vi.spyOn(repository, 'save').mockImplementationOnce(async (profile) => {
+      await save(profile);
+      await store.load();
+    });
+
+    const profile = await store.create(draft('Anna'));
+
+    expect(store.profiles()).toEqual([profile]);
+  });
+
+  it('shows a name stored elsewhere once saving it here has been rejected', async () => {
+    await store.load();
+    // Stored by another tab after this one had loaded.
+    await repository.save({
+      id: 'other-tab',
+      name: 'Anna',
+      birthYear: null,
+      bodyForm: 'NEUTRAL',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    await expect(store.create(draft('anna'))).rejects.toThrow(DuplicateProfileNameError);
+
+    expect(store.isNameTaken('anna')).toBe(true);
+    expect(store.profiles().map((profile) => profile.name)).toEqual(['Anna']);
+  });
+
+  it('keeps reporting a failed load after a profile has been created', async () => {
+    vi.spyOn(repository, 'findAll').mockRejectedValueOnce(new Error('kaputt'));
+    await store.load();
+
+    await store.create(draft('Anna'));
+
+    expect(store.storageError()).not.toBeNull();
+  });
+
   it('persists the profile through the repository', async () => {
     await store.create(draft('Anna'));
 

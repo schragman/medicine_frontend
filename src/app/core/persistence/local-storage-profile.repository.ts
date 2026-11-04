@@ -6,8 +6,9 @@ import {
   DEFAULT_BODY_FORM,
   DuplicateProfileNameError,
   Profile,
+  isNameTakenIn,
 } from '../model/profile';
-import { ProfileRepository, StorageUnavailableError, isNameTakenIn } from './profile.repository';
+import { ProfileRepository, StorageUnavailableError } from './profile.repository';
 
 const STORAGE_KEY = 'medicin.profiles';
 
@@ -38,7 +39,7 @@ export class LocalStorageProfileRepository extends ProfileRepository {
    */
   async save(profile: Profile): Promise<void> {
     const profiles = this.read().profiles;
-    if (isNameTakenIn(profiles, profile)) {
+    if (isNameTakenIn(profiles, profile.name, profile.id)) {
       throw new DuplicateProfileNameError(profile.name);
     }
     const index = profiles.findIndex((candidate) => candidate.id === profile.id);

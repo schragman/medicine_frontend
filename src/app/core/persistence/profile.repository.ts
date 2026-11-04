@@ -1,4 +1,4 @@
-import { Profile, normalizeName } from '../model/profile';
+import { Profile } from '../model/profile';
 
 /**
  * Access to stored profiles. Components depend on this abstraction only, never on a
@@ -24,14 +24,6 @@ export abstract class ProfileRepository {
  * Thrown when the underlying storage cannot be read or written — unavailable, full or
  * corrupted. Callers surface this instead of losing data silently (US-11, AC5).
  */
-/** True if a profile other than this one already uses its name. For implementations. */
-export function isNameTakenIn(profiles: readonly Profile[], profile: Profile): boolean {
-  const normalized = normalizeName(profile.name);
-  return profiles.some(
-    (candidate) => candidate.id !== profile.id && normalizeName(candidate.name) === normalized,
-  );
-}
-
 export class StorageUnavailableError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);

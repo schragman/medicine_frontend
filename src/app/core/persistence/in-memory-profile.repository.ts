@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 
-import { DuplicateProfileNameError, Profile } from '../model/profile';
-import { ProfileRepository, isNameTakenIn } from './profile.repository';
+import { DuplicateProfileNameError, Profile, isNameTakenIn } from '../model/profile';
+import { ProfileRepository } from './profile.repository';
 
 /**
  * Test double for {@link ProfileRepository}. Keeps profiles in memory so unit tests do
@@ -16,7 +16,7 @@ export class InMemoryProfileRepository extends ProfileRepository {
   }
 
   async save(profile: Profile): Promise<void> {
-    if (isNameTakenIn(this.profiles, profile)) {
+    if (isNameTakenIn(this.profiles, profile.name, profile.id)) {
       throw new DuplicateProfileNameError(profile.name);
     }
     const index = this.profiles.findIndex((candidate) => candidate.id === profile.id);

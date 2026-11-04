@@ -25,6 +25,7 @@ import {
   BODY_FORM_LABELS,
   BodyForm,
   DEFAULT_BODY_FORM,
+  NAME_REQUIRED_MESSAGE,
   Profile,
 } from '../../core/model/profile';
 import { ProfileStore } from '../../core/profile.store';
@@ -81,7 +82,7 @@ export class ProfileFormDialog {
       return null;
     }
     if (control.hasError('required')) {
-      return 'Bitte geben Sie einen Namen ein.';
+      return NAME_REQUIRED_MESSAGE;
     }
     if (control.hasError('duplicateName')) {
       return 'Es gibt bereits eine Silhouette mit diesem Namen.';
@@ -94,6 +95,9 @@ export class ProfileFormDialog {
     const control = this.form.controls.birthYear;
     if (!control.touched || control.valid) {
       return null;
+    }
+    if (control.hasError('wholeNumber')) {
+      return 'Bitte geben Sie das Jahr als ganze Zahl ein.';
     }
     return `Bitte geben Sie ein Jahr zwischen ${EARLIEST_BIRTH_YEAR} und ${this.latestBirthYear} ein.`;
   });
@@ -119,6 +123,9 @@ export class ProfileFormDialog {
     this.form.controls.name.updateValueAndValidity();
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      // markAllAsTouched emits no form event when the form was touched already; this
+      // one makes sure the error messages recompute.
+      this.form.updateValueAndValidity();
       this.focusFirstInvalidField();
       return;
     }
@@ -129,7 +136,7 @@ export class ProfileFormDialog {
       const { name, birthYear, bodyForm } = this.form.getRawValue();
       const profile = await this.store.create({
         name,
-        birthYear: birthYear === null || Number.isNaN(birthYear) ? null : birthYear,
+        birthYear,
         bodyForm,
       });
       this.created.emit(profile);
@@ -144,9 +151,21 @@ export class ProfileFormDialog {
     }
   }
 
-  /** Discards the input without asking (AC6). */
+  /** Discards the input without asking (AC6). Not while saving — see {@link onCancel}. */
   protected cancel(): void {
-    this.dialogRef().nativeElement.close();
+    if (!this.submitting()) {
+      this.dialogRef().nativeElement.close();
+    }
+  }
+
+  /**
+   * Esc while saving would report a cancel for a profile that is created anyway, so the
+   * dialog stays open until the save has finished.
+   */
+  protected onCancel(event: Event): void {
+    if (this.submitting()) {
+      event.preventDefault();
+    }
   }
 
   /**

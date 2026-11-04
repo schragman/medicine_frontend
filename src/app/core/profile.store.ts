@@ -5,7 +5,7 @@ import {
   EmptyProfileNameError,
   Profile,
   ProfileDraft,
-  normalizeName,
+  isNameTakenIn,
 } from './model/profile';
 import { ProfileRepository, StorageUnavailableError } from './persistence/profile.repository';
 
@@ -60,10 +60,7 @@ export class ProfileStore {
 
   /** True if a profile with this name already exists, ignoring case and whitespace. */
   isNameTaken(name: string, exceptId?: string): boolean {
-    const normalized = normalizeName(name);
-    return this.profilesSignal().some(
-      (profile) => profile.id !== exceptId && normalizeName(profile.name) === normalized,
-    );
+    return isNameTakenIn(this.profilesSignal(), name, exceptId);
   }
 
   /**
@@ -97,15 +94,25 @@ export class ProfileStore {
     try {
       await this.repository.save(profile);
     } catch (error) {
-      if (error instanceof DuplicateProfileNameError || error instanceof StorageUnavailableError) {
+      if (error instanceof DuplicateProfileNameError) {
+        // Stored elsewhere in the meantime (another tab): show it, so that the form
+        // flags the name on the next attempt instead of failing the same way again.
+        await this.load();
+        throw error;
+      }
+      if (error instanceof StorageUnavailableError) {
         throw error;
       }
       throw new StorageUnavailableError(UNEXPECTED_STORAGE_ERROR, { cause: error });
     }
 
-    this.profilesSignal.update((profiles) => [...profiles, profile]);
+    // Replace rather than append: a load running during the save may already have
+    // picked up the new profile. storageError stays as it is — it is about loading.
+    this.profilesSignal.update((profiles) => [
+      ...profiles.filter((existing) => existing.id !== profile.id),
+      profile,
+    ]);
     this.activeIdSignal.set(profile.id);
-    this.storageErrorSignal.set(null);
     return profile;
   }
 

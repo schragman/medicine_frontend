@@ -39,6 +39,20 @@ export function normalizeName(name: string): string {
   return name.trim().toLocaleLowerCase('de-DE');
 }
 
+/** True if a profile other than `exceptId` already uses this name (AC4). */
+export function isNameTakenIn(
+  profiles: readonly Profile[],
+  name: string,
+  exceptId?: string,
+): boolean {
+  const normalized = normalizeName(name);
+  return profiles.some(
+    (profile) => profile.id !== exceptId && normalizeName(profile.name) === normalized,
+  );
+}
+
+export const NAME_REQUIRED_MESSAGE = 'Bitte geben Sie einen Namen ein.';
+
 /** Thrown when a profile name is already taken (AC4). */
 export class DuplicateProfileNameError extends Error {
   constructor(readonly profileName: string) {
@@ -50,7 +64,7 @@ export class DuplicateProfileNameError extends Error {
 /** Thrown when a profile name is empty or consists of whitespace only. */
 export class EmptyProfileNameError extends Error {
   constructor() {
-    super('Bitte geben Sie einen Namen ein.');
+    super(NAME_REQUIRED_MESSAGE);
     this.name = 'EmptyProfileNameError';
   }
 }
