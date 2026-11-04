@@ -116,6 +116,73 @@ export class ProfileStore {
     return profile;
   }
 
+  /**
+   * Gives a profile a new name (US-03). The other fields stay as they are.
+   *
+   * @throws EmptyProfileNameError if the name is blank.
+   * @throws DuplicateProfileNameError if another profile already uses the name (AC2).
+   * @throws StorageUnavailableError if the change could not be stored.
+   */
+  async rename(id: string, newName: string): Promise<Profile> {
+    await this.pendingLoad;
+
+    const existing = this.profilesSignal().find((profile) => profile.id === id);
+    if (!existing) {
+      throw new StorageUnavailableError('Die Silhouette ist nicht mehr vorhanden.');
+    }
+    const name = newName.trim();
+    if (name === '') {
+      throw new EmptyProfileNameError();
+    }
+    if (this.isNameTaken(name, id)) {
+      throw new DuplicateProfileNameError(name);
+    }
+
+    const renamed: Profile = { ...existing, name };
+    try {
+      await this.repository.save(renamed);
+    } catch (error) {
+      if (error instanceof DuplicateProfileNameError) {
+        await this.load();
+        throw error;
+      }
+      if (error instanceof StorageUnavailableError) {
+        throw error;
+      }
+      throw new StorageUnavailableError(UNEXPECTED_STORAGE_ERROR, { cause: error });
+    }
+
+    this.profilesSignal.update((profiles) =>
+      profiles.map((profile) => (profile.id === id ? renamed : profile)),
+    );
+    return renamed;
+  }
+
+  /**
+   * Deletes a profile (US-03). Health issues will be stored per profile and have to be
+   * deleted here as well once they exist (rule R7, US-08). If the active profile was
+   * deleted, the newest remaining one becomes active, or none if there is none left (AC4).
+   *
+   * @throws StorageUnavailableError if the profile could not be deleted.
+   */
+  async remove(id: string): Promise<void> {
+    await this.pendingLoad;
+
+    try {
+      await this.repository.delete(id);
+    } catch (error) {
+      if (error instanceof StorageUnavailableError) {
+        throw error;
+      }
+      throw new StorageUnavailableError(UNEXPECTED_STORAGE_ERROR, { cause: error });
+    }
+
+    this.profilesSignal.update((profiles) => profiles.filter((profile) => profile.id !== id));
+    if (this.activeIdSignal() === id) {
+      this.activeIdSignal.set(this.profiles()[0]?.id ?? null);
+    }
+  }
+
   /** Makes this profile the active one. An unknown id is ignored (US-02 AC3). */
   activate(id: string): void {
     if (this.profilesSignal().some((profile) => profile.id === id)) {

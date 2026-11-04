@@ -16,7 +16,6 @@ import {
   FormBuilder,
   ReactiveFormsModule,
   ValidationErrors,
-  ValidatorFn,
   Validators,
 } from '@angular/forms';
 
@@ -29,6 +28,7 @@ import {
   Profile,
 } from '../../core/model/profile';
 import { ProfileStore } from '../../core/profile.store';
+import { DUPLICATE_NAME_MESSAGE, requiredName, uniqueName } from './profile-validators';
 
 const EARLIEST_BIRTH_YEAR = 1900;
 
@@ -85,7 +85,7 @@ export class ProfileFormDialog {
       return NAME_REQUIRED_MESSAGE;
     }
     if (control.hasError('duplicateName')) {
-      return 'Es gibt bereits eine Silhouette mit diesem Namen.';
+      return DUPLICATE_NAME_MESSAGE;
     }
     return null;
   });
@@ -200,25 +200,8 @@ export class ProfileFormDialog {
   }
 }
 
-/** Like Validators.required, but a name of whitespace only counts as missing too. */
-function requiredName(control: AbstractControl): ValidationErrors | null {
-  const value = control.value;
-  return typeof value === 'string' && value.trim() !== '' ? null : { required: true };
-}
-
 /** Rejects fractional numbers; an empty field is left to the other validators. */
 function wholeNumber(control: AbstractControl): ValidationErrors | null {
   const value = control.value;
   return value === null || value === '' || Number.isInteger(value) ? null : { wholeNumber: true };
-}
-
-/** Rejects names that are already in use (AC4). */
-function uniqueName(store: ProfileStore): ValidatorFn {
-  return (control: AbstractControl): ValidationErrors | null => {
-    const value = control.value;
-    if (typeof value !== 'string' || value.trim() === '') {
-      return null;
-    }
-    return store.isNameTaken(value) ? { duplicateName: true } : null;
-  };
 }

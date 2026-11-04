@@ -170,6 +170,103 @@ describe('ProfileStore', () => {
     expect(store.hasProfiles()).toBe(false);
   });
 
+  describe('rename (US-03)', () => {
+    it('renames a profile and stores the new name', async () => {
+      const anna = await store.create(draft('Anna'));
+
+      const renamed = await store.rename(anna.id, '  Anne ');
+
+      expect(renamed.name).toBe('Anne');
+      expect(store.activeProfile()?.name).toBe('Anne');
+      expect((await repository.findAll()).map((profile) => profile.name)).toEqual(['Anne']);
+    });
+
+    it('lets a profile keep its own name in a different case', async () => {
+      const anna = await store.create(draft('Anna'));
+
+      await expect(store.rename(anna.id, 'ANNA')).resolves.toMatchObject({ name: 'ANNA' });
+    });
+
+    it('rejects a name used by another profile (AC2)', async () => {
+      await store.create(draft('Anna'));
+      const bea = await store.create(draft('Bea'));
+
+      await expect(store.rename(bea.id, 'anna')).rejects.toThrow(DuplicateProfileNameError);
+      expect(store.profiles().find((profile) => profile.id === bea.id)?.name).toBe('Bea');
+    });
+
+    it('rejects a blank name', async () => {
+      const anna = await store.create(draft('Anna'));
+
+      await expect(store.rename(anna.id, '  ')).rejects.toThrow(EmptyProfileNameError);
+    });
+
+    it('reports a storage failure to the caller', async () => {
+      const anna = await store.create(draft('Anna'));
+      vi.spyOn(repository, 'save').mockRejectedValueOnce(new Error('Speicher voll'));
+
+      await expect(store.rename(anna.id, 'Anne')).rejects.toThrow(StorageUnavailableError);
+      expect(store.activeProfile()?.name).toBe('Anna');
+    });
+  });
+
+  describe('remove (US-03)', () => {
+    it('deletes the profile from the store and the repository', async () => {
+      const anna = await store.create(draft('Anna'));
+      await store.create(draft('Bea'));
+
+      await store.remove(anna.id);
+
+      expect(store.profiles().map((profile) => profile.name)).toEqual(['Bea']);
+      expect((await repository.findAll()).map((profile) => profile.name)).toEqual(['Bea']);
+    });
+
+    it('keeps the active profile when another one is deleted', async () => {
+      const anna = await store.create(draft('Anna'));
+      const bea = await store.create(draft('Bea'));
+      store.activate(anna.id);
+
+      await store.remove(bea.id);
+
+      expect(store.activeProfile()).toEqual(anna);
+    });
+
+    it('activates the newest remaining profile after deleting the active one (AC4)', async () => {
+      for (const [id, name, month] of [['1', 'Anna', '01'], ['2', 'Bea', '02'], ['3', 'Cleo', '03']]) {
+        await repository.save({
+          id,
+          name,
+          birthYear: null,
+          bodyForm: 'NEUTRAL',
+          createdAt: `2026-${month}-01T00:00:00.000Z`,
+        });
+      }
+      await store.load();
+      store.activate('2');
+
+      await store.remove('2');
+
+      expect(store.activeProfile()?.name).toBe('Cleo');
+    });
+
+    it('has no active profile after deleting the last one (AC4)', async () => {
+      const anna = await store.create(draft('Anna'));
+
+      await store.remove(anna.id);
+
+      expect(store.activeProfile()).toBeNull();
+      expect(store.hasProfiles()).toBe(false);
+    });
+
+    it('keeps the profile when deleting fails', async () => {
+      const anna = await store.create(draft('Anna'));
+      vi.spyOn(repository, 'delete').mockRejectedValueOnce(new Error('kaputt'));
+
+      await expect(store.remove(anna.id)).rejects.toThrow(StorageUnavailableError);
+      expect(store.activeProfile()).toEqual(anna);
+    });
+  });
+
   it('surfaces a failure to load instead of failing silently', async () => {
     vi.spyOn(repository, 'findAll').mockRejectedValueOnce(new Error('kaputt'));
 

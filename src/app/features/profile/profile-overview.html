@@ -13,7 +13,10 @@
 
   @if (store.hasProfiles()) {
     <div class="overview__content">
-      <med-profile-list />
+      <med-profile-list
+        (renameRequested)="profileToRename.set($event)"
+        (deleteRequested)="profileToDelete.set($event)"
+      />
 
       @if (store.activeProfile(); as profile) {
         <med-silhouette-placeholder [profile]="profile" />
@@ -26,7 +29,12 @@
         Legen Sie eine Silhouette an, um gesundheitliche Probleme für eine Person zu dokumentieren.
         Jede Person bekommt eine eigene Silhouette mit einem eindeutigen Namen.
       </p>
-      <button type="button" class="button button--primary" (click)="openDialog()">
+      <button
+        type="button"
+        class="button button--primary"
+        data-testid="create-first-profile"
+        (click)="openDialog()"
+      >
         Erste Silhouette anlegen
       </button>
     </section>
@@ -36,5 +44,17 @@
     [open]="dialogOpen()"
     (created)="closeDialog()"
     (cancelled)="closeDialog()"
+  />
+
+  <med-profile-rename-dialog
+    [profile]="profileToRename()"
+    (renamed)="profileToRename.set(null)"
+    (cancelled)="profileToRename.set(null)"
+  />
+
+  <med-profile-delete-dialog
+    [profile]="profileToDelete()"
+    (deleted)="onDeleted()"
+    (cancelled)="profileToDelete.set(null)"
   />
 </div>

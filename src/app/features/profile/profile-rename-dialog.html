@@ -1,0 +1,37 @@
+<dialog #dialog class="dialog" aria-labelledby="profile-rename-title" (cancel)="onCancel($event)"
+  (close)="onClose()"
+>
+  <form class="form" [formGroup]="form" (ngSubmit)="submit()">
+    <h2 id="profile-rename-title" class="form__title">Silhouette umbenennen</h2>
+
+    <div class="field">
+      <label class="field__label" for="profile-rename-name">Neuer Name *</label>
+      <input
+        id="profile-rename-name"
+        class="field__input"
+        type="text"
+        formControlName="name"
+        autocomplete="off"
+        required
+        [attr.aria-invalid]="nameError() ? 'true' : null"
+        [attr.aria-describedby]="nameError() ? 'profile-rename-name-error' : null"
+      />
+      @if (nameError(); as error) {
+        <p id="profile-rename-name-error" class="field__error" role="alert">{{ error }}</p>
+      }
+    </div>
+
+    @if (submitError(); as error) {
+      <p class="form__error" role="alert">{{ error }}</p>
+    }
+
+    <div class="form__actions">
+      <button type="button" class="button" [disabled]="submitting()" (click)="cancel()">
+        Abbrechen
+      </button>
+      <button type="submit" class="button button--primary" [disabled]="submitting()">
+        Umbenennen
+      </button>
+    </div>
+  </form>
+</dialog>

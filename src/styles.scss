@@ -85,6 +85,17 @@ body {
     }
   }
 
+  /* Irreversible actions such as deleting. */
+  &--danger {
+    border-color: transparent;
+    background: var(--color-danger);
+    color: var(--color-accent-contrast);
+
+    &:hover {
+      background: var(--color-danger-text);
+    }
+  }
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;

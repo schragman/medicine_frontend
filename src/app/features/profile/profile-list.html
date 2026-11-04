@@ -4,7 +4,7 @@
   <ul class="profile-list__items">
     @for (profile of store.profiles(); track profile.id) {
       @let active = profile.id === store.activeId();
-      <li>
+      <li class="profile-list__entry" data-testid="profile-list-entry">
         <button
           type="button"
           class="profile-list__item"
@@ -26,6 +26,26 @@
             <span class="profile-list__badge">aktiv</span>
           }
         </button>
+        <div class="profile-list__actions">
+          <button
+            type="button"
+            class="profile-list__action"
+            data-testid="rename-profile"
+            [attr.aria-label]="'Silhouette „' + profile.name + '“ umbenennen'"
+            (click)="renameRequested.emit(profile)"
+          >
+            Umbenennen
+          </button>
+          <button
+            type="button"
+            class="profile-list__action profile-list__action--danger"
+            data-testid="delete-profile"
+            [attr.aria-label]="'Silhouette „' + profile.name + '“ löschen'"
+            (click)="deleteRequested.emit(profile)"
+          >
+            Löschen
+          </button>
+        </div>
       </li>
     }
   </ul>
