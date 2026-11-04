@@ -1,4 +1,4 @@
-import { DuplicateProfileNameError, Profile } from '../model/profile';
+import { DuplicateProfileNameError, Profile, ProfileNotFoundError } from '../model/profile';
 import { LocalStorageProfileRepository } from './local-storage-profile.repository';
 
 const STORAGE_KEY = 'medicin.profiles';
@@ -50,5 +50,24 @@ describe('LocalStorageProfileRepository', () => {
     await repository.save({ ...profile('1', 'Anna'), birthYear: 1990 });
 
     expect((await repository.findAll()).map((stored) => stored.birthYear)).toEqual([1990]);
+  });
+
+  it('does not insert a profile on update that another tab has deleted (US-03)', async () => {
+    const tabA = new LocalStorageProfileRepository();
+    const tabB = new LocalStorageProfileRepository();
+    await tabA.save(profile('1', 'Anna'));
+
+    await tabB.delete('1');
+
+    await expect(tabA.update(profile('1', 'Anne'))).rejects.toThrow(ProfileNotFoundError);
+    expect(await tabA.findAll()).toEqual([]);
+  });
+
+  it('rejects a name on update that another profile uses (US-03 AC2)', async () => {
+    const repository = new LocalStorageProfileRepository();
+    await repository.save(profile('1', 'Anna'));
+    await repository.save(profile('2', 'Bea'));
+
+    await expect(repository.update(profile('2', 'ANNA'))).rejects.toThrow(DuplicateProfileNameError);
   });
 });

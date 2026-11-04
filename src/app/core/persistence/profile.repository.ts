@@ -17,6 +17,15 @@ export abstract class ProfileRepository {
    * @throws DuplicateProfileNameError if another stored profile has the same name.
    */
   abstract save(profile: Profile): Promise<void>;
+
+  /**
+   * Replaces a stored profile. Unlike {@link save} it never inserts, so that a profile
+   * deleted elsewhere (another tab) does not come back through a change made here.
+   *
+   * @throws ProfileNotFoundError if no profile with this id is stored.
+   * @throws DuplicateProfileNameError if another stored profile has the same name.
+   */
+  abstract update(profile: Profile): Promise<void>;
   abstract delete(id: string): Promise<void>;
 }
 

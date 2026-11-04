@@ -6,6 +6,7 @@ import {
   DEFAULT_BODY_FORM,
   DuplicateProfileNameError,
   Profile,
+  ProfileNotFoundError,
   isNameTakenIn,
 } from '../model/profile';
 import { ProfileRepository, StorageUnavailableError } from './profile.repository';
@@ -48,6 +49,20 @@ export class LocalStorageProfileRepository extends ProfileRepository {
     } else {
       profiles.push(profile);
     }
+    this.write(profiles);
+  }
+
+  /** Like {@link save}, checks against the profiles just read rather than a snapshot. */
+  async update(profile: Profile): Promise<void> {
+    const profiles = this.read().profiles;
+    const index = profiles.findIndex((candidate) => candidate.id === profile.id);
+    if (index < 0) {
+      throw new ProfileNotFoundError();
+    }
+    if (isNameTakenIn(profiles, profile.name, profile.id)) {
+      throw new DuplicateProfileNameError(profile.name);
+    }
+    profiles[index] = profile;
     this.write(profiles);
   }
 

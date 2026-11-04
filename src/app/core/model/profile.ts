@@ -61,6 +61,14 @@ export class DuplicateProfileNameError extends Error {
   }
 }
 
+/** Thrown when a profile is to be changed that has been deleted in the meantime. */
+export class ProfileNotFoundError extends Error {
+  constructor() {
+    super('Diese Silhouette gibt es nicht mehr. Sie wurde vermutlich in einem anderen Fenster gelöscht.');
+    this.name = 'ProfileNotFoundError';
+  }
+}
+
 /** Thrown when a profile name is empty or consists of whitespace only. */
 export class EmptyProfileNameError extends Error {
   constructor() {

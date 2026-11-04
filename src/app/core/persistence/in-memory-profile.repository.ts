@@ -1,6 +1,11 @@
 import { Injectable } from '@angular/core';
 
-import { DuplicateProfileNameError, Profile, isNameTakenIn } from '../model/profile';
+import {
+  DuplicateProfileNameError,
+  Profile,
+  ProfileNotFoundError,
+  isNameTakenIn,
+} from '../model/profile';
 import { ProfileRepository } from './profile.repository';
 
 /**
@@ -25,6 +30,17 @@ export class InMemoryProfileRepository extends ProfileRepository {
     } else {
       this.profiles.push(profile);
     }
+  }
+
+  async update(profile: Profile): Promise<void> {
+    const index = this.profiles.findIndex((candidate) => candidate.id === profile.id);
+    if (index < 0) {
+      throw new ProfileNotFoundError();
+    }
+    if (isNameTakenIn(this.profiles, profile.name, profile.id)) {
+      throw new DuplicateProfileNameError(profile.name);
+    }
+    this.profiles[index] = profile;
   }
 
   async delete(id: string): Promise<void> {

@@ -8,12 +8,13 @@ import {
   input,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
-import { NAME_REQUIRED_MESSAGE, Profile } from '../../core/model/profile';
+import { DuplicateProfileNameError, NAME_REQUIRED_MESSAGE, Profile } from '../../core/model/profile';
 import { ProfileStore } from '../../core/profile.store';
 import { DUPLICATE_NAME_MESSAGE, requiredName, uniqueName } from './profile-validators';
 
@@ -69,9 +70,13 @@ export class ProfileRenameDialog {
       const profile = this.profile();
       if (profile) {
         if (!dialog.open) {
-          this.form.reset({ name: profile.name });
-          this.submitError.set(null);
-          this.submitting.set(false);
+          // Untracked: resetting runs the uniqueName validator, which reads the store's
+          // profiles — the effect must not re-run whenever they change.
+          untracked(() => {
+            this.form.reset({ name: profile.name });
+            this.submitError.set(null);
+            this.submitting.set(false);
+          });
           dialog.showModal();
           dialog.querySelector<HTMLInputElement>('#profile-rename-name')?.select();
         }
@@ -99,6 +104,13 @@ export class ProfileRenameDialog {
     try {
       this.renamed.emit(await this.store.rename(profile.id, this.form.getRawValue().name));
     } catch (error) {
+      if (error instanceof DuplicateProfileNameError) {
+        // The store has reloaded, as another tab took the name: flag it at the field
+        // (AC2), which already says so — no second message below the form.
+        this.form.controls.name.markAsTouched();
+        this.form.controls.name.updateValueAndValidity();
+        return;
+      }
       this.submitError.set(
         error instanceof Error ? error.message : 'Die Silhouette konnte nicht umbenannt werden.',
       );

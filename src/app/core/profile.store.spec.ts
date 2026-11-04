@@ -5,6 +5,7 @@ import {
   DuplicateProfileNameError,
   EmptyProfileNameError,
   ProfileDraft,
+  ProfileNotFoundError,
 } from './model/profile';
 import { InMemoryProfileRepository } from './persistence/in-memory-profile.repository';
 import { ProfileRepository, StorageUnavailableError } from './persistence/profile.repository';
@@ -201,9 +202,35 @@ describe('ProfileStore', () => {
       await expect(store.rename(anna.id, '  ')).rejects.toThrow(EmptyProfileNameError);
     });
 
+    it('does not bring back a profile deleted elsewhere in the meantime', async () => {
+      const anna = await store.create(draft('Anna'));
+      const bea = await store.create(draft('Bea'));
+      store.activate(anna.id);
+      // Deleted by another tab after this one had loaded.
+      await repository.delete(anna.id);
+
+      await expect(store.rename(anna.id, 'Anne')).rejects.toThrow(ProfileNotFoundError);
+
+      expect(await repository.findAll()).toEqual([bea]);
+      expect(store.profiles()).toEqual([bea]);
+      expect(store.activeProfile()).toEqual(bea);
+    });
+
+    it('reports an unknown profile as not found, not as a storage failure', async () => {
+      await expect(store.rename('does-not-exist', 'Anne')).rejects.toThrow(ProfileNotFoundError);
+    });
+
+    it('does not write when the name is unchanged', async () => {
+      const anna = await store.create(draft('Anna'));
+      const update = vi.spyOn(repository, 'update');
+
+      await expect(store.rename(anna.id, ' Anna ')).resolves.toEqual(anna);
+      expect(update).not.toHaveBeenCalled();
+    });
+
     it('reports a storage failure to the caller', async () => {
       const anna = await store.create(draft('Anna'));
-      vi.spyOn(repository, 'save').mockRejectedValueOnce(new Error('Speicher voll'));
+      vi.spyOn(repository, 'update').mockRejectedValueOnce(new Error('Speicher voll'));
 
       await expect(store.rename(anna.id, 'Anne')).rejects.toThrow(StorageUnavailableError);
       expect(store.activeProfile()?.name).toBe('Anna');

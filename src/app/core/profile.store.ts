@@ -5,6 +5,7 @@ import {
   EmptyProfileNameError,
   Profile,
   ProfileDraft,
+  ProfileNotFoundError,
   isNameTakenIn,
 } from './model/profile';
 import { ProfileRepository, StorageUnavailableError } from './persistence/profile.repository';
@@ -121,6 +122,7 @@ export class ProfileStore {
    *
    * @throws EmptyProfileNameError if the name is blank.
    * @throws DuplicateProfileNameError if another profile already uses the name (AC2).
+   * @throws ProfileNotFoundError if the profile has been deleted in the meantime.
    * @throws StorageUnavailableError if the change could not be stored.
    */
   async rename(id: string, newName: string): Promise<Profile> {
@@ -128,11 +130,16 @@ export class ProfileStore {
 
     const existing = this.profilesSignal().find((profile) => profile.id === id);
     if (!existing) {
-      throw new StorageUnavailableError('Die Silhouette ist nicht mehr vorhanden.');
+      await this.load();
+      throw new ProfileNotFoundError();
     }
     const name = newName.trim();
     if (name === '') {
       throw new EmptyProfileNameError();
+    }
+    if (name === existing.name) {
+      // Nothing to store — and so nothing that could fail on a full storage.
+      return existing;
     }
     if (this.isNameTaken(name, id)) {
       throw new DuplicateProfileNameError(name);
@@ -140,9 +147,11 @@ export class ProfileStore {
 
     const renamed: Profile = { ...existing, name };
     try {
-      await this.repository.save(renamed);
+      await this.repository.update(renamed);
     } catch (error) {
-      if (error instanceof DuplicateProfileNameError) {
+      if (error instanceof DuplicateProfileNameError || error instanceof ProfileNotFoundError) {
+        // Changed elsewhere (another tab): show the current state, so that the dialog
+        // reflects it instead of failing the same way again.
         await this.load();
         throw error;
       }
@@ -196,9 +205,10 @@ export class ProfileStore {
       this.profilesSignal.set(profiles);
       this.storageErrorSignal.set(null);
 
-      const newest = this.profiles()[0];
-      if (newest && this.activeIdSignal() === null) {
-        this.activeIdSignal.set(newest.id);
+      // Also when the active profile has been deleted elsewhere in the meantime.
+      const activeId = this.activeIdSignal();
+      if (!profiles.some((profile) => profile.id === activeId)) {
+        this.activeIdSignal.set(this.profiles()[0]?.id ?? null);
       }
     } catch (error) {
       this.storageErrorSignal.set(
