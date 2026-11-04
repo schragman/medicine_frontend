@@ -3,17 +3,18 @@
 
   <ul class="profile-list__items">
     @for (profile of store.profiles(); track profile.id) {
+      @let active = profile.id === store.activeId();
       <li>
         <button
           type="button"
           class="profile-list__item"
-          [class.profile-list__item--active]="profile.id === activeId()"
-          [attr.aria-current]="profile.id === activeId() ? 'true' : null"
+          [class.profile-list__item--active]="active"
+          [attr.aria-current]="active ? 'true' : null"
           data-testid="profile-list-item"
           (click)="select(profile.id)"
         >
           <span class="profile-list__marker" aria-hidden="true">
-            @if (profile.id === activeId()) {
+            @if (active) {
               ✓
             }
           </span>
@@ -21,7 +22,7 @@
           @if (profile.birthYear !== null) {
             <span class="profile-list__year">{{ profile.birthYear }}</span>
           }
-          @if (profile.id === activeId()) {
+          @if (active) {
             <span class="profile-list__badge">aktiv</span>
           }
         </button>

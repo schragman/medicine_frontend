@@ -38,3 +38,19 @@ export const BODY_FORM_LABELS: Readonly<Record<BodyForm, string>> = {
 export function normalizeName(name: string): string {
   return name.trim().toLocaleLowerCase('de-DE');
 }
+
+/** Thrown when a profile name is already taken (AC4). */
+export class DuplicateProfileNameError extends Error {
+  constructor(readonly profileName: string) {
+    super(`Es gibt bereits eine Silhouette mit dem Namen „${profileName}".`);
+    this.name = 'DuplicateProfileNameError';
+  }
+}
+
+/** Thrown when a profile name is empty or consists of whitespace only. */
+export class EmptyProfileNameError extends Error {
+  constructor() {
+    super('Bitte geben Sie einen Namen ein.');
+    this.name = 'EmptyProfileNameError';
+  }
+}

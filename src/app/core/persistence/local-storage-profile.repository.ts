@@ -1,7 +1,13 @@
 import { Injectable } from '@angular/core';
 
-import { BODY_FORMS, DEFAULT_BODY_FORM, Profile } from '../model/profile';
-import { ProfileRepository, StorageUnavailableError } from './profile.repository';
+import {
+  BODY_FORMS,
+  BodyForm,
+  DEFAULT_BODY_FORM,
+  DuplicateProfileNameError,
+  Profile,
+} from '../model/profile';
+import { ProfileRepository, StorageUnavailableError, isNameTakenIn } from './profile.repository';
 
 const STORAGE_KEY = 'medicin.profiles';
 
@@ -26,8 +32,15 @@ export class LocalStorageProfileRepository extends ProfileRepository {
     return this.read().profiles;
   }
 
+  /**
+   * Checks the name against the profiles just read rather than against a caller's
+   * snapshot, so that two open tabs cannot store the same name (AC4).
+   */
   async save(profile: Profile): Promise<void> {
     const profiles = this.read().profiles;
+    if (isNameTakenIn(profiles, profile)) {
+      throw new DuplicateProfileNameError(profile.name);
+    }
     const index = profiles.findIndex((candidate) => candidate.id === profile.id);
     if (index >= 0) {
       profiles[index] = profile;
@@ -103,18 +116,28 @@ function migrate(parsed: unknown): StoredProfiles {
     );
   }
 
-  if (!Array.isArray(profiles) || !profiles.every(isProfile)) {
+  if (!Array.isArray(profiles) || !profiles.every(isStoredProfile)) {
     throw new StorageUnavailableError('Die gespeicherten Daten sind unvollständig.');
   }
 
-  return { schemaVersion, profiles };
+  // Profiles stored before the body form existed get the default one.
+  return {
+    schemaVersion,
+    profiles: profiles.map((profile) => ({
+      ...profile,
+      bodyForm: profile.bodyForm ?? DEFAULT_BODY_FORM,
+    })),
+  };
 }
 
-function isProfile(candidate: unknown): candidate is Profile {
+/** A stored profile; the body form may be missing in profiles stored before it existed. */
+type StoredProfile = Omit<Profile, 'bodyForm'> & { readonly bodyForm?: BodyForm };
+
+function isStoredProfile(candidate: unknown): candidate is StoredProfile {
   if (typeof candidate !== 'object' || candidate === null) {
     return false;
   }
-  const profile = candidate as Partial<Profile>;
+  const profile = candidate as Partial<StoredProfile>;
   return (
     typeof profile.id === 'string' &&
     typeof profile.name === 'string' &&

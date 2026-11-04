@@ -1,4 +1,4 @@
-<dialog #dialog class="dialog" aria-labelledby="profile-form-title" (cancel)="cancel()">
+<dialog #dialog class="dialog" aria-labelledby="profile-form-title" (close)="onClose()">
   <form class="form" [formGroup]="form" (ngSubmit)="submit()">
     <h2 id="profile-form-title" class="form__title">Neue Silhouette anlegen</h2>
     <p class="form__hint">Felder mit * sind Pflichtfelder.</p>

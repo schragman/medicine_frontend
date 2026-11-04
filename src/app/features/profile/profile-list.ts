@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
 import { ProfileStore } from '../../core/profile.store';
 
@@ -14,8 +14,6 @@ import { ProfileStore } from '../../core/profile.store';
 })
 export class ProfileList {
   protected readonly store = inject(ProfileStore);
-
-  protected readonly activeId = computed(() => this.store.activeProfile()?.id ?? null);
 
   protected select(id: string): void {
     this.store.activate(id);

@@ -1,7 +1,16 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import { Profile, ProfileDraft, normalizeName } from './model/profile';
+import {
+  DuplicateProfileNameError,
+  EmptyProfileNameError,
+  Profile,
+  ProfileDraft,
+  normalizeName,
+} from './model/profile';
 import { ProfileRepository, StorageUnavailableError } from './persistence/profile.repository';
+
+const UNEXPECTED_STORAGE_ERROR =
+  'Beim Zugriff auf den Speicher ist ein unerwarteter Fehler aufgetreten.';
 
 /**
  * Holds the profiles of the running application and the currently active one.
@@ -17,10 +26,16 @@ export class ProfileStore {
   private readonly activeIdSignal = signal<string | null>(null);
   private readonly storageErrorSignal = signal<string | null>(null);
 
+  /** Settles once the latest {@link load} has finished; commands wait for it. */
+  private pendingLoad: Promise<void> = Promise.resolve();
+
   /** All profiles, newest first. */
   readonly profiles = computed(() =>
     [...this.profilesSignal()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   );
+
+  /** Id of the active profile, or null while there is none. */
+  readonly activeId = this.activeIdSignal.asReadonly();
 
   readonly activeProfile = computed(
     () => this.profilesSignal().find((profile) => profile.id === this.activeIdSignal()) ?? null,
@@ -28,26 +43,19 @@ export class ProfileStore {
 
   readonly hasProfiles = computed(() => this.profilesSignal().length > 0);
 
-  /** Message of the last storage failure, or null. Shown instead of failing silently. */
+  /**
+   * Message of the last failure to load the profiles, or null. Shown instead of failing
+   * silently. Failures of {@link create} are reported to its caller instead.
+   */
   readonly storageError = this.storageErrorSignal.asReadonly();
 
   /**
    * Loads the stored profiles. The most recently created one starts out active; from
    * there the user switches profiles through {@link activate} (US-02).
    */
-  async load(): Promise<void> {
-    try {
-      const profiles = await this.repository.findAll();
-      this.profilesSignal.set(profiles);
-      this.storageErrorSignal.set(null);
-
-      const newest = this.profiles()[0];
-      if (newest && this.activeIdSignal() === null) {
-        this.activeIdSignal.set(newest.id);
-      }
-    } catch (error) {
-      this.reportStorageError(error);
-    }
+  load(): Promise<void> {
+    this.pendingLoad = this.fetchProfiles();
+    return this.pendingLoad;
   }
 
   /** True if a profile with this name already exists, ignoring case and whitespace. */
@@ -59,13 +67,21 @@ export class ProfileStore {
   }
 
   /**
-   * Creates a profile and makes it the active one.
+   * Creates a profile and makes it the active one. Waits for a pending {@link load}, so
+   * that the duplicate check sees every stored profile.
    *
+   * @throws EmptyProfileNameError if the name is blank.
    * @throws DuplicateProfileNameError if the name is already taken. The form validates
-   *   this beforehand; the check here guards the invariant regardless of the caller.
+   *   both beforehand; the checks here guard the invariants regardless of the caller.
+   * @throws StorageUnavailableError if the profile could not be stored.
    */
   async create(draft: ProfileDraft): Promise<Profile> {
+    await this.pendingLoad;
+
     const name = draft.name.trim();
+    if (name === '') {
+      throw new EmptyProfileNameError();
+    }
     if (this.isNameTaken(name)) {
       throw new DuplicateProfileNameError(name);
     }
@@ -81,8 +97,10 @@ export class ProfileStore {
     try {
       await this.repository.save(profile);
     } catch (error) {
-      this.reportStorageError(error);
-      throw error;
+      if (error instanceof DuplicateProfileNameError || error instanceof StorageUnavailableError) {
+        throw error;
+      }
+      throw new StorageUnavailableError(UNEXPECTED_STORAGE_ERROR, { cause: error });
     }
 
     this.profilesSignal.update((profiles) => [...profiles, profile]);
@@ -98,18 +116,20 @@ export class ProfileStore {
     }
   }
 
-  private reportStorageError(error: unknown): void {
-    this.storageErrorSignal.set(
-      error instanceof StorageUnavailableError
-        ? error.message
-        : 'Beim Zugriff auf den Speicher ist ein unerwarteter Fehler aufgetreten.',
-    );
-  }
-}
+  private async fetchProfiles(): Promise<void> {
+    try {
+      const profiles = await this.repository.findAll();
+      this.profilesSignal.set(profiles);
+      this.storageErrorSignal.set(null);
 
-export class DuplicateProfileNameError extends Error {
-  constructor(readonly profileName: string) {
-    super(`Es gibt bereits eine Silhouette mit dem Namen „${profileName}".`);
-    this.name = 'DuplicateProfileNameError';
+      const newest = this.profiles()[0];
+      if (newest && this.activeIdSignal() === null) {
+        this.activeIdSignal.set(newest.id);
+      }
+    } catch (error) {
+      this.storageErrorSignal.set(
+        error instanceof StorageUnavailableError ? error.message : UNEXPECTED_STORAGE_ERROR,
+      );
+    }
   }
 }

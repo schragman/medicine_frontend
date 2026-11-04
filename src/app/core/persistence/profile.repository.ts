@@ -1,4 +1,4 @@
-import { Profile } from '../model/profile';
+import { Profile, normalizeName } from '../model/profile';
 
 /**
  * Access to stored profiles. Components depend on this abstraction only, never on a
@@ -10,6 +10,12 @@ import { Profile } from '../model/profile';
  */
 export abstract class ProfileRepository {
   abstract findAll(): Promise<Profile[]>;
+
+  /**
+   * Inserts or replaces the profile.
+   *
+   * @throws DuplicateProfileNameError if another stored profile has the same name.
+   */
   abstract save(profile: Profile): Promise<void>;
   abstract delete(id: string): Promise<void>;
 }
@@ -18,6 +24,14 @@ export abstract class ProfileRepository {
  * Thrown when the underlying storage cannot be read or written — unavailable, full or
  * corrupted. Callers surface this instead of losing data silently (US-11, AC5).
  */
+/** True if a profile other than this one already uses its name. For implementations. */
+export function isNameTakenIn(profiles: readonly Profile[], profile: Profile): boolean {
+  const normalized = normalizeName(profile.name);
+  return profiles.some(
+    (candidate) => candidate.id !== profile.id && normalizeName(candidate.name) === normalized,
+  );
+}
+
 export class StorageUnavailableError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);

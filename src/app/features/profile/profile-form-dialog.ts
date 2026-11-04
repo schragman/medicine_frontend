@@ -10,6 +10,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormBuilder,
@@ -57,10 +58,14 @@ export class ProfileFormDialog {
   protected readonly submitError = signal<string | null>(null);
 
   protected readonly form = this.formBuilder.nonNullable.group({
-    name: ['', [Validators.required, uniqueName(this.store)]],
+    name: ['', [requiredName, uniqueName(this.store)]],
     birthYear: [
       null as number | null,
-      [Validators.min(EARLIEST_BIRTH_YEAR), Validators.max(this.latestBirthYear)],
+      [
+        wholeNumber,
+        Validators.min(EARLIEST_BIRTH_YEAR),
+        Validators.max(this.latestBirthYear),
+      ],
     ],
     bodyForm: [DEFAULT_BODY_FORM as BodyForm, Validators.required],
   });
@@ -70,7 +75,7 @@ export class ProfileFormDialog {
 
   /** Error text for the name field, or null while the field is valid or untouched. */
   protected readonly nameError = computed(() => {
-    void this.formState();
+    void this.formEvent();
     const control = this.form.controls.name;
     if (!control.touched || control.valid) {
       return null;
@@ -85,7 +90,7 @@ export class ProfileFormDialog {
   });
 
   protected readonly birthYearError = computed(() => {
-    void this.formState();
+    void this.formEvent();
     const control = this.form.controls.birthYear;
     if (!control.touched || control.valid) {
       return null;
@@ -93,12 +98,10 @@ export class ProfileFormDialog {
     return `Bitte geben Sie ein Jahr zwischen ${EARLIEST_BIRTH_YEAR} und ${this.latestBirthYear} ein.`;
   });
 
-  /** Bumped on every form change so the error messages recompute. */
-  private readonly formState = signal(0);
+  /** Latest form event — read by the error messages so that they recompute. */
+  private readonly formEvent = toSignal(this.form.events);
 
   constructor() {
-    this.form.events.subscribe(() => this.formState.update((value) => value + 1));
-
     effect(() => {
       const dialog = this.dialogRef().nativeElement;
       if (this.open()) {
@@ -116,7 +119,6 @@ export class ProfileFormDialog {
     this.form.controls.name.updateValueAndValidity();
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.formState.update((value) => value + 1);
       this.focusFirstInvalidField();
       return;
     }
@@ -142,9 +144,19 @@ export class ProfileFormDialog {
     }
   }
 
-  /** Discards the input without asking (AC6). Also fired by Esc via the dialog's cancel. */
+  /** Discards the input without asking (AC6). */
   protected cancel(): void {
-    this.cancelled.emit();
+    this.dialogRef().nativeElement.close();
+  }
+
+  /**
+   * Runs on every native close — "Abbrechen", Esc, or a close the browser does without a
+   * cancel event. Reports a cancel unless the parent has closed the dialog itself.
+   */
+  protected onClose(): void {
+    if (this.open()) {
+      this.cancelled.emit();
+    }
   }
 
   private reset(): void {
@@ -167,6 +179,18 @@ export class ProfileFormDialog {
       this.dialogRef().nativeElement.querySelector<HTMLElement>(firstInvalid[0])?.focus();
     }
   }
+}
+
+/** Like Validators.required, but a name of whitespace only counts as missing too. */
+function requiredName(control: AbstractControl): ValidationErrors | null {
+  const value = control.value;
+  return typeof value === 'string' && value.trim() !== '' ? null : { required: true };
+}
+
+/** Rejects fractional numbers; an empty field is left to the other validators. */
+function wholeNumber(control: AbstractControl): ValidationErrors | null {
+  const value = control.value;
+  return value === null || value === '' || Number.isInteger(value) ? null : { wholeNumber: true };
 }
 
 /** Rejects names that are already in use (AC4). */
