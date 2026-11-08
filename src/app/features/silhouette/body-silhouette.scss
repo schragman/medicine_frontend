@@ -1,0 +1,126 @@
+.silhouette {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  &__name {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
+  &__meta {
+    margin: var(--space-1) 0 0;
+    color: var(--color-text-muted);
+    font-size: 0.9375rem;
+  }
+
+  &__figure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    margin: 0;
+  }
+
+  /* Fills the height left beside header, page title and the sticky disclaimer, so that
+     the whole body is visible without scrolling (AC1). The viewBox keeps the
+     proportions; the width follows from the height. */
+  &__svg {
+    display: block;
+    width: 100%;
+    height: clamp(26rem, calc(100dvh - 22rem), 56rem);
+  }
+
+  /* Translucent body: structures layered inside it stay readable through the fill,
+     while the outline keeps full contrast (WCAG 2.2 AA, non-text contrast). */
+  &__body path {
+    fill: var(--color-silhouette-fill);
+    stroke: var(--color-silhouette-stroke);
+    stroke-width: 2;
+    stroke-linejoin: round;
+  }
+
+  &__details path {
+    fill: none;
+    stroke: var(--color-silhouette-stroke);
+    stroke-width: 1.25;
+    stroke-linecap: round;
+    opacity: 0.7;
+  }
+
+  &__sides text {
+    fill: var(--color-text-muted);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  &__caption {
+    display: flex;
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+
+    strong {
+      color: var(--color-text);
+    }
+  }
+}
+
+.view-switch {
+  display: inline-flex;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+
+  &__option {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-4);
+    border: 0;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font: inherit;
+    cursor: pointer;
+
+    & + & {
+      border-left: 1px solid var(--color-border-strong);
+    }
+
+    &:hover {
+      background: var(--color-background);
+    }
+
+    &:focus-visible {
+      outline-offset: -3px;
+    }
+
+    /* Active: check mark and bold text besides the colour (Ü-3). */
+    &--active {
+      background: var(--color-accent);
+      color: var(--color-accent-contrast);
+      font-weight: 600;
+
+      &:hover {
+        background: var(--color-accent-strong);
+      }
+    }
+  }
+
+  &__marker {
+    display: inline-block;
+    width: 0.75rem;
+  }
+}

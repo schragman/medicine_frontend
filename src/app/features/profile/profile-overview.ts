@@ -10,7 +10,7 @@ import {
 
 import { Profile } from '../../core/model/profile';
 import { ProfileStore } from '../../core/profile.store';
-import { SilhouettePlaceholder } from '../silhouette/silhouette-placeholder';
+import { BodySilhouette } from '../silhouette/body-silhouette';
 import { ProfileDeleteDialog } from './profile-delete-dialog';
 import { ProfileFormDialog } from './profile-form-dialog';
 import { ProfileList } from './profile-list';
@@ -23,11 +23,11 @@ import { ProfileRenameDialog } from './profile-rename-dialog';
 @Component({
   selector: 'med-profile-overview',
   imports: [
+    BodySilhouette,
     ProfileDeleteDialog,
     ProfileFormDialog,
     ProfileList,
     ProfileRenameDialog,
-    SilhouettePlaceholder,
   ],
   templateUrl: './profile-overview.html',
   styleUrl: './profile-overview.scss',

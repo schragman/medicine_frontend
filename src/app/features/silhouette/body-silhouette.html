@@ -1,0 +1,74 @@
+<section class="silhouette" aria-labelledby="silhouette-title">
+  <header class="silhouette__header">
+    <div>
+      <h2 id="silhouette-title" class="silhouette__name" data-testid="active-profile-name">
+        {{ profile().name }}
+      </h2>
+      <p class="silhouette__meta">
+        Körperform: {{ bodyFormLabels[profile().bodyForm] }}
+        @if (profile().birthYear !== null) {
+          · Geburtsjahr: {{ profile().birthYear }}
+        }
+      </p>
+    </div>
+
+    <div class="view-switch" role="group" aria-label="Ansicht">
+      @for (option of views; track option) {
+        @let active = option === view();
+        <button
+          type="button"
+          class="view-switch__option"
+          [class.view-switch__option--active]="active"
+          [attr.aria-pressed]="active"
+          [attr.data-testid]="'view-' + option.toLowerCase()"
+          (click)="show(option)"
+        >
+          <span class="view-switch__marker" aria-hidden="true">{{ active ? '✓' : '' }}</span>
+          {{ viewLabels[option] }}
+        </button>
+      }
+    </div>
+  </header>
+
+  <figure class="silhouette__figure">
+    <svg
+      class="silhouette__svg"
+      [attr.viewBox]="viewBox"
+      preserveAspectRatio="xMidYMid meet"
+      role="img"
+      aria-labelledby="silhouette-svg-title"
+      aria-describedby="silhouette-svg-desc"
+      data-testid="silhouette"
+      [attr.data-view]="view()"
+      [attr.data-body-form]="profile().bodyForm"
+    >
+      <title id="silhouette-svg-title">
+        Körpersilhouette von {{ profile().name }}, {{ viewLabels[view()] }}
+      </title>
+      <desc id="silhouette-svg-desc">{{ description() }}</desc>
+
+      <!-- Stable ids: catalogue entries refer to shapes through BodyPart.geometryRef (US-12). -->
+      <g id="silhouette-outline" class="silhouette__body">
+        <path id="outline-body" [attr.d]="shapes().body" />
+        <path id="outline-arm-right" [attr.d]="shapes().rightArm" />
+        <path id="outline-arm-left" [attr.d]="shapes().leftArm" />
+      </g>
+
+      <g class="silhouette__details" aria-hidden="true">
+        @for (detail of details(); track $index) {
+          <path [attr.d]="detail" />
+        }
+      </g>
+
+      <g class="silhouette__sides" aria-hidden="true">
+        <text x="16" y="40">{{ sideMarkers().left }}</text>
+        <text x="304" y="40" text-anchor="end">{{ sideMarkers().right }}</text>
+      </g>
+    </svg>
+
+    <figcaption class="silhouette__caption" data-testid="view-caption">
+      <strong>{{ viewLabels[view()] }}</strong>
+      <span>· R = rechte, L = linke Körperseite</span>
+    </figcaption>
+  </figure>
+</section>
