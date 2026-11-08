@@ -43,12 +43,10 @@ export class BodySilhouette {
 
   /** Long description for assistive technology (Ü-2). */
   protected readonly description = computed(() => {
-    const profile = this.profile();
-    const side =
-      this.view() === 'FRONT'
-        ? 'Die rechte Körperseite ist links im Bild.'
-        : 'Die rechte Körperseite ist rechts im Bild.';
-    return `Körperumriss eines Menschen in Körperform ${BODY_FORM_LABELS[profile.bodyForm]}, stehend mit leicht abgespreizten Armen. ${side}`;
+    const form = this.bodyFormLabels[this.profile().bodyForm];
+    // Derived from the markers, so that the text never contradicts what is shown.
+    const rightSide = this.sideMarkers().left === 'R' ? 'links' : 'rechts';
+    return `Körperumriss eines Menschen in Körperform ${form}, stehend mit leicht abgespreizten Armen. Die rechte Körperseite ist ${rightSide} im Bild.`;
   });
 
   protected show(view: BodyView): void {

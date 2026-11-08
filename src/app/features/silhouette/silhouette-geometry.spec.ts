@@ -11,6 +11,18 @@ function points(path: string): Array<[number, number]> {
   return result;
 }
 
+/** x of the outline point at this height on the right body half (x > 160). */
+function rightX(path: string, y: number): number {
+  return Math.max(
+    ...points(path)
+      .filter(([px, py]) => py === y && px > 160)
+      .map(([x]) => x),
+  );
+}
+
+/** Coordinates are rounded to one decimal, so mirrored values may differ by that. */
+const ROUNDING = 0.1 + 1e-9;
+
 function widthAt(form: BodyForm, y: number): number {
   const xs = points(silhouetteShapes(form).body)
     .filter(([, py]) => py === y)
@@ -33,17 +45,27 @@ describe('silhouetteShapes', () => {
     }
   });
 
-  it.each(BODY_FORMS)('is symmetric about the centre line (%s)', (form) => {
+  it.each(BODY_FORMS)('draws the arms as mirror images (%s)', (form) => {
     const shapes = silhouetteShapes(form);
     const right = points(shapes.rightArm);
     const left = points(shapes.leftArm);
 
     expect(left).toHaveLength(right.length);
     left.forEach(([x, y], i) => {
-      // Coordinates are rounded to one decimal, so mirrored values may differ by that.
-      expect(Math.abs(x - (VIEW_BOX.width - right[i][0]))).toBeLessThanOrEqual(0.1 + 1e-9);
+      expect(Math.abs(x - (VIEW_BOX.width - right[i][0]))).toBeLessThanOrEqual(ROUNDING);
       expect(y).toBe(right[i][1]);
     });
+  });
+
+  it.each(BODY_FORMS)('draws the body symmetric about the centre line (%s)', (form) => {
+    const body = points(silhouetteShapes(form).body);
+
+    for (const [x, y] of body) {
+      const mirrored = body.some(
+        ([mx, my]) => my === y && Math.abs(mx - (VIEW_BOX.width - x)) <= ROUNDING,
+      );
+      expect(mirrored, `no mirror image of ${x} ${y}`).toBe(true);
+    }
   });
 
   it('keeps the figure 540 units tall', () => {
@@ -64,6 +86,39 @@ describe('silhouetteShapes', () => {
     expect(widthAt('FEMALE', hips) / widthAt('FEMALE', shoulders)).toBeGreaterThan(
       widthAt('MALE', hips) / widthAt('MALE', shoulders),
     );
+  });
+});
+
+describe('legs and arms per body form', () => {
+  const outerThigh = 351;
+  const innerThigh = 349;
+
+  function thigh(form: BodyForm) {
+    const body = silhouetteShapes(form).body;
+    const inner = rightX(body, innerThigh);
+    return { width: rightX(body, outerThigh) - inner, gap: inner - 160 };
+  }
+
+  it('makes the thighs wider instead of moving the legs apart (AC3)', () => {
+    expect(thigh('FEMALE').width).toBeGreaterThan(thigh('NEUTRAL').width);
+    expect(thigh('FEMALE').gap).toBeLessThanOrEqual(thigh('NEUTRAL').gap);
+  });
+
+  it.each(BODY_FORMS)('keeps the hand clear of the hip (%s)', (form) => {
+    const shapes = silhouetteShapes(form);
+    const handInside = 308;
+    const hip = 303;
+    const neutralGap =
+      rightX(silhouetteShapes('NEUTRAL').rightArm, handInside) -
+      rightX(silhouetteShapes('NEUTRAL').body, hip);
+
+    // The inner edge of the hand is the smaller of the two arm points at this height.
+    const handX = Math.min(
+      ...points(shapes.rightArm)
+        .filter(([, y]) => y === handInside)
+        .map(([x]) => x),
+    );
+    expect(handX - rightX(shapes.body, hip)).toBeGreaterThanOrEqual(neutralGap - 1);
   });
 });
 

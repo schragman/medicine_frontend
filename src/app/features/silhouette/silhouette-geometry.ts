@@ -30,74 +30,101 @@ export const BODY_VIEW_LABELS: Readonly<Record<BodyView, string>> = {
 /** Body regions whose width depends on the body form. */
 type Zone = 'head' | 'neck' | 'shoulder' | 'chest' | 'waist' | 'hip' | 'thigh' | 'lowerLeg';
 
-/** A point of the right body half: [x, y, zone, sharp corner?]. */
-type OutlinePoint = readonly [x: number, y: number, zone: Zone, corner?: boolean];
+type Point = readonly [x: number, y: number];
+
+/** A point of an outline on the right body half. */
+interface OutlinePoint {
+  readonly x: number;
+  readonly y: number;
+  readonly zone: Zone;
+  /** Keeps a sharp angle instead of a smooth curve — the soles and the crotch. */
+  readonly corner?: boolean;
+  /**
+   * On the inside of the leg: moves towards the centre line when the zone gets wider, so
+   * that the leg itself widens instead of moving outwards.
+   */
+  readonly inner?: boolean;
+}
+
+function point(
+  x: number,
+  y: number,
+  zone: Zone,
+  flags: Pick<OutlinePoint, 'corner' | 'inner'> = {},
+): OutlinePoint {
+  return { x, y, zone, ...flags };
+}
 
 /**
  * Right half of head, trunk and leg, from the top of the head down the outside of the
  * leg, across the sole and up the inside of the leg to the crotch.
  */
 const RIGHT_HALF: readonly OutlinePoint[] = [
-  [160, 8, 'head'],
-  [176, 12, 'head'],
-  [185, 27, 'head'],
-  [187, 46, 'head'],
-  [183, 65, 'head'],
-  [176, 77, 'head'],
-  [172, 86, 'neck'],
-  [171, 97, 'neck'],
-  [184, 104, 'shoulder'],
-  [199, 112, 'shoulder'],
-  [214, 122, 'shoulder'],
-  [216, 142, 'chest'],
-  [213, 160, 'chest'],
-  [212, 180, 'chest'],
-  [204, 200, 'waist'],
-  [200, 218, 'waist'],
-  [206, 238, 'waist'],
-  [212, 258, 'hip'],
-  [211, 278, 'hip'],
-  [217, 303, 'hip'],
-  [211, 351, 'thigh'],
-  [202, 405, 'thigh'],
-  [201, 441, 'lowerLeg'],
-  [191, 493, 'lowerLeg'],
-  [186, 525, 'lowerLeg'],
-  [190, 538, 'lowerLeg'],
-  [194, 548, 'lowerLeg', true],
-  [162, 548, 'lowerLeg', true],
-  [166, 523, 'lowerLeg'],
-  [167, 491, 'lowerLeg'],
-  [165, 439, 'lowerLeg'],
-  [168, 403, 'thigh'],
-  [165, 349, 'thigh'],
-  [163, 301, 'thigh'],
-  [160, 282, 'thigh', true],
-];
-
-/** Outline of the right arm including the hand, as one closed shape. */
-const RIGHT_ARM: readonly OutlinePoint[] = [
-  [210.5, 115, 'shoulder'],
-  [231, 132.5, 'shoulder'],
-  [231, 183.5, 'shoulder'],
-  [238, 219, 'shoulder'],
-  [245, 253.5, 'shoulder'],
-  [248, 286.5, 'shoulder'],
-  [256, 304, 'shoulder'],
-  [255.5, 321, 'shoulder'],
-  [247, 331.5, 'shoulder'],
-  [236.5, 323, 'shoulder'],
-  [232, 308, 'shoulder'],
-  [232, 289.5, 'shoulder'],
-  [223, 258.5, 'shoulder'],
-  [214, 225, 'shoulder'],
-  [201, 188.5, 'shoulder'],
-  [193, 135.5, 'shoulder'],
+  point(160, 8, 'head'),
+  point(176, 12, 'head'),
+  point(185, 27, 'head'),
+  point(187, 46, 'head'),
+  point(183, 65, 'head'),
+  point(176, 77, 'head'),
+  point(172, 86, 'neck'),
+  point(171, 97, 'neck'),
+  point(184, 104, 'shoulder'),
+  point(199, 112, 'shoulder'),
+  point(214, 122, 'shoulder'),
+  point(216, 142, 'chest'),
+  point(213, 160, 'chest'),
+  point(212, 180, 'chest'),
+  point(204, 200, 'waist'),
+  point(200, 218, 'waist'),
+  point(206, 238, 'waist'),
+  point(212, 258, 'hip'),
+  point(211, 278, 'hip'),
+  point(217, 303, 'hip'),
+  point(211, 351, 'thigh'),
+  point(202, 405, 'thigh'),
+  point(201, 441, 'lowerLeg'),
+  point(191, 493, 'lowerLeg'),
+  point(186, 525, 'lowerLeg'),
+  point(190, 538, 'lowerLeg'),
+  point(194, 548, 'lowerLeg', { corner: true }),
+  point(162, 548, 'lowerLeg', { corner: true, inner: true }),
+  point(166, 523, 'lowerLeg', { inner: true }),
+  point(167, 491, 'lowerLeg', { inner: true }),
+  point(165, 439, 'lowerLeg', { inner: true }),
+  point(168, 403, 'thigh', { inner: true }),
+  point(165, 349, 'thigh', { inner: true }),
+  point(163, 301, 'thigh', { inner: true }),
+  point(160, 282, 'thigh', { corner: true }),
 ];
 
 /**
- * How much wider (+) or narrower (−) each region is than the neutral form, in grid
- * units per body side. Points on the centre line stay where they are.
+ * Outline of the right arm including the hand, as one closed shape. The arm hangs from
+ * the shoulder and the hand rests beside the hip, so each part follows the width of the
+ * trunk next to it.
+ */
+const RIGHT_ARM: readonly OutlinePoint[] = [
+  point(210.5, 115, 'shoulder'),
+  point(231, 132.5, 'shoulder'),
+  point(231, 183.5, 'shoulder'),
+  point(238, 219, 'waist'),
+  point(245, 253.5, 'waist'),
+  point(248, 286.5, 'hip'),
+  point(256, 304, 'hip'),
+  point(255.5, 321, 'hip'),
+  point(247, 331.5, 'hip'),
+  point(236.5, 323, 'hip'),
+  point(232, 308, 'hip'),
+  point(232, 289.5, 'hip'),
+  point(223, 258.5, 'waist'),
+  point(214, 225, 'waist'),
+  point(201, 188.5, 'shoulder'),
+  point(193, 135.5, 'shoulder'),
+];
+
+/**
+ * How much wider (+) or narrower (−) each region is than the neutral form, in grid units
+ * per body side. Points on the centre line stay where they are; inner leg points move
+ * half as far, towards the centre.
  */
 const WIDTH_CHANGE: Readonly<Record<BodyForm, Readonly<Record<Zone, number>>>> = {
   NEUTRAL: { head: 0, neck: 0, shoulder: 0, chest: 0, waist: 0, hip: 0, thigh: 0, lowerLeg: 0 },
@@ -115,16 +142,17 @@ export interface SilhouetteShapes {
 /** The silhouette for a body form. The outline is the same seen from front and back. */
 export function silhouetteShapes(form: BodyForm): SilhouetteShapes {
   const change = WIDTH_CHANGE[form];
-  const widen = ([x, y, zone, corner]: OutlinePoint): OutlinePoint => {
-    const offset = x - CENTER_X;
-    return offset === 0
-      ? [x, y, zone, corner]
-      : [x + Math.sign(offset) * change[zone], y, zone, corner];
+  const widen = (p: OutlinePoint): OutlinePoint => {
+    if (p.x === CENTER_X) {
+      return p;
+    }
+    const shift = p.inner ? -change[p.zone] / 2 : change[p.zone];
+    return { ...p, x: p.x + Math.sign(p.x - CENTER_X) * shift };
   };
 
   const rightHalf = RIGHT_HALF.map(widen);
-  // The left half runs back up, so the loop is closed without repeating the points
-  // that lie on the centre line (top of the head and crotch).
+  // The left half runs back up, so the loop is closed without repeating the points that
+  // lie on the centre line (top of the head and crotch).
   const leftHalf = rightHalf.slice(1, -1).reverse().map(mirror);
 
   const rightArm = RIGHT_ARM.map(widen);
@@ -141,58 +169,62 @@ export function silhouetteShapes(form: BodyForm): SilhouetteShapes {
  */
 export function viewDetails(form: BodyForm, view: BodyView): readonly string[] {
   const shoulder = WIDTH_CHANGE[form].shoulder;
+  const bothSides = (line: readonly OutlinePoint[]) => [openPath(line), openPath(line.map(mirror))];
+
   if (view === 'FRONT') {
-    const collarbone = `M 164 106 C 176 104, 190 108, ${200 + shoulder} 114`;
-    return [
-      collarbone,
-      mirrorPath(collarbone),
-      // navel
-      'M 160 226 m -3 0 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0',
+    const collarbone = [
+      point(164, 106, 'shoulder'),
+      point(182, 106, 'shoulder'),
+      point(200 + shoulder, 114, 'shoulder'),
     ];
+    const navel = [0, 90, 180, 270].map((degrees) => {
+      const angle = (degrees * Math.PI) / 180;
+      return point(CENTER_X + 3 * Math.cos(angle), 226 + 3 * Math.sin(angle), 'waist');
+    });
+    return [...bothSides(collarbone), closedPath(navel)];
   }
-  const shoulderBlade = `M ${176 + shoulder / 2} 128 C ${192 + shoulder} 130, ${196 + shoulder} 150, ${180 + shoulder / 2} 170`;
-  const glutealFold = 'M 162 300 C 172 306, 190 307, 206 300';
-  return [
-    // spine
-    'M 160 100 L 160 268',
-    shoulderBlade,
-    mirrorPath(shoulderBlade),
-    glutealFold,
-    mirrorPath(glutealFold),
+
+  const spine = [point(CENTER_X, 100, 'chest'), point(CENTER_X, 268, 'waist')];
+  const shoulderBlade = [
+    point(176 + shoulder / 2, 128, 'shoulder'),
+    point(188 + shoulder * 0.8, 135, 'shoulder'),
+    point(190 + shoulder * 0.8, 151, 'shoulder'),
+    point(180 + shoulder / 2, 170, 'shoulder'),
   ];
+  const glutealFold = [point(162, 300, 'hip'), point(184, 306, 'hip'), point(206, 300, 'hip')];
+  return [openPath(spine), ...bothSides(shoulderBlade), ...bothSides(glutealFold)];
 }
 
-function mirror([x, y, zone, corner]: OutlinePoint): OutlinePoint {
-  return [2 * CENTER_X - x, y, zone, corner];
-}
-
-/** Mirrors a path made of absolute M, C and L commands at the centre line. */
-function mirrorPath(path: string): string {
-  let isX = true;
-  return path.replace(/-?\d+(\.\d+)?/g, (value) => {
-    const mirrored = isX ? String(round(2 * CENTER_X - Number(value))) : value;
-    isX = !isX;
-    return mirrored;
-  });
+function mirror(p: OutlinePoint): OutlinePoint {
+  return { ...p, x: 2 * CENTER_X - p.x };
 }
 
 /**
  * Smooth closed path through the points (Catmull-Rom spline as cubic Béziers). A point
- * marked as corner keeps a sharp angle — the soles and the crotch.
+ * marked as corner keeps a sharp angle.
  */
 function closedPath(points: readonly OutlinePoint[]): string {
   const at = (index: number) => points[(index + points.length) % points.length];
-  const segments = points.map((_, i) => {
-    const [p0, p1, p2, p3] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
-    const c1 = p1[3] ? p1 : [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
-    const c2 = p2[3] ? p2 : [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
-    return `C ${coords(c1)}, ${coords(c2)}, ${coords(p2)}`;
-  });
-  return `M ${coords(points[0])} ${segments.join(' ')} Z`;
+  const segments = points.map((_, i) => curve(at(i - 1), at(i), at(i + 1), at(i + 2)));
+  return `M ${coords([points[0].x, points[0].y])} ${segments.join(' ')} Z`;
 }
 
-function coords(point: readonly unknown[]): string {
-  return `${round(point[0] as number)} ${round(point[1] as number)}`;
+/** Smooth open path through the points; it starts and ends without a bend. */
+function openPath(points: readonly OutlinePoint[]): string {
+  const at = (index: number) => points[Math.min(Math.max(index, 0), points.length - 1)];
+  const segments = points.slice(1).map((_, i) => curve(at(i - 1), at(i), at(i + 1), at(i + 2)));
+  return `M ${coords([points[0].x, points[0].y])} ${segments.join(' ')}`;
+}
+
+/** Cubic Bézier from p1 to p2; the neighbours p0 and p3 set the tangents. */
+function curve(p0: OutlinePoint, p1: OutlinePoint, p2: OutlinePoint, p3: OutlinePoint): string {
+  const c1: Point = p1.corner ? [p1.x, p1.y] : [p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6];
+  const c2: Point = p2.corner ? [p2.x, p2.y] : [p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6];
+  return `C ${coords(c1)}, ${coords(c2)}, ${coords([p2.x, p2.y])}`;
+}
+
+function coords([x, y]: Point): string {
+  return `${round(x)} ${round(y)}`;
 }
 
 function round(value: number): number {

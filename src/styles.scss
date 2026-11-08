@@ -43,6 +43,12 @@ body {
   padding: 0;
 }
 
+/* Keeps elements scrolled into view (for instance on focus) clear of the sticky
+   disclaimer footer (WCAG 2.2 SC 2.4.11). */
+html {
+  scroll-padding-bottom: 6rem;
+}
+
 body {
   background: var(--color-background);
   color: var(--color-text);
