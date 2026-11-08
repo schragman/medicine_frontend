@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal } from '@angular/core';
 
 import { BODY_FORM_LABELS, Profile } from '../../core/model/profile';
 import {
@@ -28,7 +28,16 @@ export class BodySilhouette {
   protected readonly bodyFormLabels = BODY_FORM_LABELS;
   protected readonly viewBox = `0 0 ${VIEW_BOX.width} ${VIEW_BOX.height}`;
 
-  protected readonly view = signal<BodyView>('FRONT');
+  /**
+   * Starts on the front for every profile switched to. Keeping the back view would show
+   * the next person with swapped side markers, which is easy to miss and would put a
+   * problem on the wrong side. Renaming the same profile keeps the view.
+   */
+  protected readonly view = linkedSignal<string, BodyView>({
+    source: () => this.profile().id,
+    // The source re-runs on every change of the profile, renaming included.
+    computation: (id, previous) => (previous?.source === id ? previous.value : 'FRONT'),
+  });
 
   protected readonly shapes = computed(() => silhouetteShapes(this.profile().bodyForm));
   protected readonly details = computed(() => viewDetails(this.profile().bodyForm, this.view()));
