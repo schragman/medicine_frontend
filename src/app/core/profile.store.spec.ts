@@ -220,12 +220,12 @@ describe('ProfileStore', () => {
       await expect(store.rename('does-not-exist', 'Anne')).rejects.toThrow(ProfileNotFoundError);
     });
 
-    it('does not write when the name is unchanged', async () => {
+    it('reports a profile deleted elsewhere even if the name is unchanged', async () => {
       const anna = await store.create(draft('Anna'));
-      const update = vi.spyOn(repository, 'update');
+      await repository.delete(anna.id);
 
-      await expect(store.rename(anna.id, ' Anna ')).resolves.toEqual(anna);
-      expect(update).not.toHaveBeenCalled();
+      await expect(store.rename(anna.id, 'Anna')).rejects.toThrow(ProfileNotFoundError);
+      expect(store.hasProfiles()).toBe(false);
     });
 
     it('reports a storage failure to the caller', async () => {
@@ -259,7 +259,11 @@ describe('ProfileStore', () => {
     });
 
     it('activates the newest remaining profile after deleting the active one (AC4)', async () => {
-      for (const [id, name, month] of [['1', 'Anna', '01'], ['2', 'Bea', '02'], ['3', 'Cleo', '03']]) {
+      for (const [id, name, month] of [
+        ['1', 'Anna', '01'],
+        ['2', 'Bea', '02'],
+        ['3', 'Cleo', '03'],
+      ]) {
         await repository.save({
           id,
           name,

@@ -62,6 +62,11 @@ export class LocalStorageProfileRepository extends ProfileRepository {
     if (isNameTakenIn(profiles, profile.name, profile.id)) {
       throw new DuplicateProfileNameError(profile.name);
     }
+    if (isSameProfile(profiles[index], profile)) {
+      // Nothing to store — and so nothing that could fail on a full storage. Compared
+      // with what was just read, not with the caller's possibly outdated copy.
+      return;
+    }
     profiles[index] = profile;
     this.write(profiles);
   }
@@ -144,6 +149,16 @@ function migrate(parsed: unknown): StoredProfiles {
       bodyForm: profile.bodyForm ?? DEFAULT_BODY_FORM,
     })),
   };
+}
+
+function isSameProfile(a: Profile, b: Profile): boolean {
+  return (
+    a.id === b.id &&
+    a.name === b.name &&
+    a.birthYear === b.birthYear &&
+    a.bodyForm === b.bodyForm &&
+    a.createdAt === b.createdAt
+  );
 }
 
 /** A stored profile; the body form may be missing in profiles stored before it existed. */

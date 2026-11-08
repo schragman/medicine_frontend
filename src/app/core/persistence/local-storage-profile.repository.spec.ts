@@ -8,13 +8,18 @@ function profile(id: string, name: string): Profile {
 }
 
 /** Map-backed stand-in: Node's own localStorage shadows the test DOM's and is unavailable. */
-function memoryStorage(): Pick<Storage, 'getItem' | 'setItem' | 'clear'> {
+function memoryStorage(): Pick<Storage, 'getItem' | 'setItem' | 'clear'> & { writes: number } {
   const items = new Map<string, string>();
-  return {
-    getItem: (key) => items.get(key) ?? null,
-    setItem: (key, value) => void items.set(key, value),
+  const storage = {
+    writes: 0,
+    getItem: (key: string) => items.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      storage.writes++;
+      items.set(key, value);
+    },
     clear: () => items.clear(),
   };
+  return storage;
 }
 
 describe('LocalStorageProfileRepository', () => {
@@ -68,6 +73,32 @@ describe('LocalStorageProfileRepository', () => {
     await repository.save(profile('1', 'Anna'));
     await repository.save(profile('2', 'Bea'));
 
-    await expect(repository.update(profile('2', 'ANNA'))).rejects.toThrow(DuplicateProfileNameError);
+    await expect(repository.update(profile('2', 'ANNA'))).rejects.toThrow(
+      DuplicateProfileNameError,
+    );
+  });
+
+  it('does not write on update when the stored profile is unchanged', async () => {
+    const storage = memoryStorage();
+    vi.stubGlobal('localStorage', storage);
+    const repository = new LocalStorageProfileRepository();
+    await repository.save(profile('1', 'Anna'));
+    const writes = storage.writes;
+
+    await repository.update(profile('1', 'Anna'));
+
+    expect(storage.writes).toBe(writes);
+  });
+
+  it('writes on update when another tab has changed the name in the meantime', async () => {
+    const tabA = new LocalStorageProfileRepository();
+    const tabB = new LocalStorageProfileRepository();
+    await tabA.save(profile('1', 'Anna'));
+    await tabB.update(profile('1', 'Anne'));
+
+    // Tab A still shows "Anna" and confirms it.
+    await tabA.update(profile('1', 'Anna'));
+
+    expect((await tabA.findAll()).map((stored) => stored.name)).toEqual(['Anna']);
   });
 });

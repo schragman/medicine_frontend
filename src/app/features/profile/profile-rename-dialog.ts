@@ -2,6 +2,8 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -14,9 +16,14 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
-import { DuplicateProfileNameError, NAME_REQUIRED_MESSAGE, Profile } from '../../core/model/profile';
+import { NAME_REQUIRED_MESSAGE, Profile, ProfileNotFoundError } from '../../core/model/profile';
 import { ProfileStore } from '../../core/profile.store';
-import { DUPLICATE_NAME_MESSAGE, requiredName, uniqueName } from './profile-validators';
+import {
+  DUPLICATE_NAME_MESSAGE,
+  flagDuplicateAtField,
+  requiredName,
+  uniqueName,
+} from './profile-validators';
 
 /** Dialog for renaming a profile (US-03). Open while `profile` is set. */
 @Component({
@@ -29,6 +36,7 @@ import { DUPLICATE_NAME_MESSAGE, requiredName, uniqueName } from './profile-vali
 export class ProfileRenameDialog {
   private readonly store = inject(ProfileStore);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly injector = inject(Injector);
 
   /** The profile to rename; the dialog is open while it is set. */
   readonly profile = input<Profile | null>(null);
@@ -38,6 +46,9 @@ export class ProfileRenameDialog {
 
   protected readonly submitting = signal(false);
   protected readonly submitError = signal<string | null>(null);
+
+  /** True once the profile turned out to be deleted elsewhere; only closing is left. */
+  protected readonly profileGone = signal(false);
 
   protected readonly form = this.formBuilder.nonNullable.group({
     name: ['', [requiredName, uniqueName(this.store, () => this.profile()?.id)]],
@@ -95,7 +106,7 @@ export class ProfileRenameDialog {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.form.updateValueAndValidity();
-      this.dialogRef().nativeElement.querySelector<HTMLElement>('#profile-rename-name')?.focus();
+      this.focus('#profile-rename-name');
       return;
     }
 
@@ -104,12 +115,17 @@ export class ProfileRenameDialog {
     try {
       this.renamed.emit(await this.store.rename(profile.id, this.form.getRawValue().name));
     } catch (error) {
-      if (error instanceof DuplicateProfileNameError) {
-        // The store has reloaded, as another tab took the name: flag it at the field
-        // (AC2), which already says so — no second message below the form.
-        this.form.controls.name.markAsTouched();
-        this.form.controls.name.updateValueAndValidity();
+      if (flagDuplicateAtField(error, this.form.controls.name)) {
+        // The field says so already (AC2) — no second message below the form.
+        this.focus('#profile-rename-name');
         return;
+      }
+      if (error instanceof ProfileNotFoundError) {
+        // Retrying cannot succeed: offer closing only, and move the focus there (Ü-2).
+        this.profileGone.set(true);
+        afterNextRender(() => this.focus('[data-testid="rename-close"]'), {
+          injector: this.injector,
+        });
       }
       this.submitError.set(
         error instanceof Error ? error.message : 'Die Silhouette konnte nicht umbenannt werden.',
@@ -117,6 +133,10 @@ export class ProfileRenameDialog {
     } finally {
       this.submitting.set(false);
     }
+  }
+
+  private focus(selector: string): void {
+    this.dialogRef().nativeElement.querySelector<HTMLElement>(selector)?.focus();
   }
 
   protected cancel(): void {
@@ -134,6 +154,9 @@ export class ProfileRenameDialog {
 
   /** Reports a cancel unless the parent has closed the dialog itself. */
   protected onClose(): void {
+    // Reset here rather than on opening: the name field has to be rendered again by
+    // then, so that opening can focus it.
+    this.profileGone.set(false);
     if (this.profile()) {
       this.cancelled.emit();
     }

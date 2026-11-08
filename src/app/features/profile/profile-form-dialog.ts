@@ -25,12 +25,16 @@ import {
   BODY_FORM_LABELS,
   BodyForm,
   DEFAULT_BODY_FORM,
-  DuplicateProfileNameError,
   NAME_REQUIRED_MESSAGE,
   Profile,
 } from '../../core/model/profile';
 import { ProfileStore } from '../../core/profile.store';
-import { DUPLICATE_NAME_MESSAGE, requiredName, uniqueName } from './profile-validators';
+import {
+  DUPLICATE_NAME_MESSAGE,
+  flagDuplicateAtField,
+  requiredName,
+  uniqueName,
+} from './profile-validators';
 
 const EARLIEST_BIRTH_YEAR = 1900;
 
@@ -145,11 +149,9 @@ export class ProfileFormDialog {
       });
       this.created.emit(profile);
     } catch (error) {
-      if (error instanceof DuplicateProfileNameError) {
-        // The store has reloaded, as another tab took the name: flag it at the field
-        // (AC4), which already says so — no second message below the form.
-        this.form.controls.name.markAsTouched();
-        this.form.controls.name.updateValueAndValidity();
+      if (flagDuplicateAtField(error, this.form.controls.name)) {
+        // The field says so already (AC4) — no second message below the form.
+        this.focusFirstInvalidField();
         return;
       }
       this.submitError.set(

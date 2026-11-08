@@ -137,10 +137,6 @@ export class ProfileStore {
     if (name === '') {
       throw new EmptyProfileNameError();
     }
-    if (name === existing.name) {
-      // Nothing to store — and so nothing that could fail on a full storage.
-      return existing;
-    }
     if (this.isNameTaken(name, id)) {
       throw new DuplicateProfileNameError(name);
     }
